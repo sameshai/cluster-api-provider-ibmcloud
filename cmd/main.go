@@ -56,8 +56,8 @@ import (
 	vpcinfrav1beta1 "sigs.k8s.io/cluster-api-provider-ibmcloud/api/vpc/v1beta1"
 	vpcinfrav1 "sigs.k8s.io/cluster-api-provider-ibmcloud/api/vpc/v1beta2"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/controllers"
-	rosicontrolplanev1 "sigs.k8s.io/cluster-api-provider-ibmcloud/controlplane/rosi/api/v1beta2"
-	rosicontrolplanecontrollers "sigs.k8s.io/cluster-api-provider-ibmcloud/controlplane/rosi/controllers"
+	rokscontrolplanev1 "sigs.k8s.io/cluster-api-provider-ibmcloud/controlplane/roks/api/v1beta2"
+	rokscontrolplanecontrollers "sigs.k8s.io/cluster-api-provider-ibmcloud/controlplane/roks/controllers"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/internal/webhooks/powervs"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/internal/webhooks/vpc"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/pkg/endpoints"
@@ -93,7 +93,7 @@ func init() {
 	utilruntime.Must(vpcinfrav1.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
-	utilruntime.Must(rosicontrolplanev1.AddToScheme(scheme))
+	utilruntime.Must(rokscontrolplanev1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -393,21 +393,21 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager, serviceEndpoint []e
 		os.Exit(1)
 	}
 
-	if err := (&rosicontrolplanecontrollers.ROSIControlPlaneReconciler{
+	if err := (&rokscontrolplanecontrollers.ROKSControlPlaneReconciler{
 		Client:           mgr.GetClient(),
 		WatchFilterValue: watchFilterValue,
 		WaitInfraPeriod:  30,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: 2, RecoverPanic: pointer.Bool(true)}); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ROSIControlPlane")
+		setupLog.Error(err, "unable to create controller", "controller", "ROKSControlPlane")
 		os.Exit(1)
 	}
 
-	if err := (&controllers.ROSIClusterReconciler{
+	if err := (&controllers.ROKSClusterReconciler{
 		Client:           mgr.GetClient(),
-		Recorder:         mgr.GetEventRecorderFor("rosicluster-controller"),
+		Recorder:         mgr.GetEventRecorderFor("rokscluster-controller"),
 		WatchFilterValue: watchFilterValue,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: 2, RecoverPanic: pointer.Bool(true)}); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ROSICluster")
+		setupLog.Error(err, "unable to create controller", "controller", "ROKSCluster")
 		os.Exit(1)
 	}
 }

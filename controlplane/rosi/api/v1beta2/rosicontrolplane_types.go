@@ -22,7 +22,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-type RosiControlPlaneSpec struct { //nolint: maligned
+type RoksControlPlaneSpec struct { //nolint: maligned
 	// The Subnet IDs to use when installing the cluster.
 	// SubnetIDs should come in pairs; two per availability zone, one private and one public.
 	Subnets []string `json:"subnets"`
@@ -69,7 +69,7 @@ type IBMRolesRef struct {
 	KMSProviderARN          string `json:"kmsProviderARN"`
 }
 
-type RosiControlPlaneStatus struct {
+type RoksControlPlaneStatus struct {
 	// ExternalManagedControlPlane indicates to cluster-api that the control plane
 	// is managed by an external service such as AKS, EKS, GKE, etc.
 	// +kubebuilder:default=true
@@ -91,38 +91,38 @@ type RosiControlPlaneStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=rosicontrolplanes,shortName=rosicp,scope=Namespaced,categories=cluster-api
+// +kubebuilder:resource:path=rokscontrolplanes,shortName=rokscp,scope=Namespaced,categories=cluster-api
 // +kubebuilder:storageversion
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels.cluster\\.x-k8s\\.io/cluster-name",description="Cluster to which this RosiControl belongs"
+// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels.cluster\\.x-k8s\\.io/cluster-name",description="Cluster to which this RoksControl belongs"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Control plane infrastructure is ready for worker nodes"
 
-type ROSIControlPlane struct {
+type ROKSControlPlane struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   RosiControlPlaneSpec   `json:"spec,omitempty"`
-	Status RosiControlPlaneStatus `json:"status,omitempty"`
+	Spec   RoksControlPlaneSpec   `json:"spec,omitempty"`
+	Status RoksControlPlaneStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-type ROSIControlPlaneList struct {
+type ROKSControlPlaneList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ROSIControlPlane `json:"items"`
+	Items           []ROKSControlPlane `json:"items"`
 }
 
 // GetConditions returns the control planes conditions.
-func (r *ROSIControlPlane) GetConditions() clusterv1.Conditions {
+func (r *ROKSControlPlane) GetConditions() clusterv1.Conditions {
 	return r.Status.Conditions
 }
 
 // SetConditions sets the status conditions for the IBMManagedControlPlane.
-func (r *ROSIControlPlane) SetConditions(conditions clusterv1.Conditions) {
+func (r *ROKSControlPlane) SetConditions(conditions clusterv1.Conditions) {
 	r.Status.Conditions = conditions
 }
 
 func init() {
-	SchemeBuilder.Register(&ROSIControlPlane{}, &ROSIControlPlaneList{})
+	SchemeBuilder.Register(&ROKSControlPlane{}, &ROKSControlPlaneList{})
 }

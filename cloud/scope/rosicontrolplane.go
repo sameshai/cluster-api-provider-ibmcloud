@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	rosicontrolplanev1 "sigs.k8s.io/cluster-api-provider-ibmcloud/v2/controlplane/rosi/api/v1beta2"
+	rokscontrolplanev1 "sigs.k8s.io/cluster-api-provider-ibmcloud/v2/controlplane/roks/api/v1beta2"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/v2/pkg/logger"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -40,15 +40,15 @@ func init() {
 	_ = rbacv1.AddToScheme(scheme)
 }
 
-type ROSIControlPlaneScopeParams struct {
+type ROKSControlPlaneScopeParams struct {
 	Client         client.Client
 	Logger         *logger.Logger
 	Cluster        *clusterv1.Cluster
-	ControlPlane   *rosicontrolplanev1.ROSIControlPlane
+	ControlPlane   *rokscontrolplanev1.ROKSControlPlane
 	ControllerName string
 }
 
-func NewROSIControlPlaneScope(params ROSIControlPlaneScopeParams) (*ROSIControlPlaneScope, error) {
+func NewROKSControlPlaneScope(params ROKSControlPlaneScopeParams) (*ROKSControlPlaneScope, error) {
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
 	}
@@ -60,7 +60,7 @@ func NewROSIControlPlaneScope(params ROSIControlPlaneScopeParams) (*ROSIControlP
 		params.Logger = logger.NewLogger(log)
 	}
 
-	managedScope := &ROSIControlPlaneScope{
+	managedScope := &ROKSControlPlaneScope{
 		Logger:       *params.Logger,
 		Client:       params.Client,
 		Cluster:      params.Cluster,
@@ -77,34 +77,34 @@ func NewROSIControlPlaneScope(params ROSIControlPlaneScopeParams) (*ROSIControlP
 	return managedScope, nil
 }
 
-// ROSIControlPlaneScope defines the basic context for an actuator to operate upon.
-type ROSIControlPlaneScope struct {
+// ROKSControlPlaneScope defines the basic context for an actuator to operate upon.
+type ROKSControlPlaneScope struct {
 	logger.Logger
 	Client      client.Client
 	patchHelper *patch.Helper
 
 	Cluster      *clusterv1.Cluster
-	ControlPlane *rosicontrolplanev1.ROSIControlPlane
+	ControlPlane *rokscontrolplanev1.ROKSControlPlane
 }
 
 // Name returns the CAPI cluster name.
-func (s *ROSIControlPlaneScope) Name() string {
+func (s *ROKSControlPlaneScope) Name() string {
 	return s.Cluster.Name
 }
 
 // InfraClusterName returns the AWS cluster name.
 
-func (s *ROSIControlPlaneScope) InfraClusterName() string {
+func (s *ROKSControlPlaneScope) InfraClusterName() string {
 	return s.ControlPlane.Name
 }
 
 // Namespace returns the cluster namespace.
-func (s *ROSIControlPlaneScope) Namespace() string {
+func (s *ROKSControlPlaneScope) Namespace() string {
 	return s.Cluster.Namespace
 }
 
 // PatchObject persists the control plane configuration and status.
-func (s *ROSIControlPlaneScope) PatchObject() error {
+func (s *ROKSControlPlaneScope) PatchObject() error {
 	return s.patchHelper.Patch(
 		context.TODO(),
 		s.ControlPlane,
@@ -112,6 +112,6 @@ func (s *ROSIControlPlaneScope) PatchObject() error {
 }
 
 // Close closes the current scope persisting the control plane configuration and status.
-func (s *ROSIControlPlaneScope) Close() error {
+func (s *ROKSControlPlaneScope) Close() error {
 	return s.PatchObject()
 }

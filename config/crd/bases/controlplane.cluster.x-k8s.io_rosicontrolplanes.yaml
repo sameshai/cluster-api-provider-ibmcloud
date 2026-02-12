@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: rosicontrolplanes.controlplane.cluster.x-k8s.io
+  name: rokscontrolplanes.controlplane.cluster.x-k8s.io
 spec:
   group: controlplane.cluster.x-k8s.io
   names:
@@ -12,10 +12,10 @@ spec:
     - cluster-api
     kind: ROSAControlPlane
     listKind: ROSAControlPlaneList
-    plural: rosicontrolplanes
+    plural: rokscontrolplanes
     shortNames:
-    - rosicp
-    singular: rosicontrolplane
+    - rokscp
+    singular: rokscontrolplane
   scope: Namespaced
   versions:
   - additionalPrinterColumns:

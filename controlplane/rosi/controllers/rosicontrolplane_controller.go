@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	rosicontrolplanev1 "sigs.k8s.io/cluster-api-provider-ibmcloud/v2/controlplane/rosi/api/v1beta2"
+	rokscontrolplanev1 "sigs.k8s.io/cluster-api-provider-ibmcloud/v2/controlplane/roks/api/v1beta2"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-ibmcloud/v2/exp/api/v1beta2"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/v2/pkg/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/v2/pkg/logger"
@@ -47,26 +47,26 @@ import (
 
 const (
 	ocmAPIUrl              = "https://api.stage.openshift.com"
-	rosiCreatorArnProperty = "rosi_creator_arn"
+	roksCreatorArnProperty = "roks_creator_arn"
 
-	rosiControlPlaneKind = "ROSIControlPlane"
-	// ROSIControlPlaneFinalizer allows the controller to clean up resources on delete.
-	ROSIControlPlaneFinalizer = "rosicontrolplane.controlplane.cluster.x-k8s.io"
+	roksControlPlaneKind = "ROKSControlPlane"
+	// ROKSControlPlaneFinalizer allows the controller to clean up resources on delete.
+	ROKSControlPlaneFinalizer = "rokscontrolplane.controlplane.cluster.x-k8s.io"
 )
 
-type ROSIControlPlaneReconciler struct {
+type ROKSControlPlaneReconciler struct {
 	client.Client
 	WatchFilterValue string
 	WaitInfraPeriod  time.Duration
 }
 
 // SetupWithManager is used to setup the controller.
-func (r *ROSIControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+func (r *ROKSControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := logger.FromContext(ctx)
 
-	rosiControlPlane := &rosicontrolplanev1.ROSIControlPlane{}
+	roksControlPlane := &rokscontrolplanev1.ROKSControlPlane{}
 	c, err := ctrl.NewControllerManagedBy(mgr).
-		For(rosiControlPlane).
+		For(roksControlPlane).
 		WithOptions(options).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log.GetLogger(), r.WatchFilterValue)).
 		Build(r)
@@ -77,17 +77,17 @@ func (r *ROSIControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 
 	if err = c.Watch(
 		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
-		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, rosiControlPlane.GroupVersionKind(), mgr.GetClient(), &expinfrav1.ROSICluster{})),
+		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, roksControlPlane.GroupVersionKind(), mgr.GetClient(), &expinfrav1.ROKSCluster{})),
 		predicates.ClusterUnpausedAndInfrastructureReady(log.GetLogger()),
 	); err != nil {
 		return fmt.Errorf("failed adding a watch for ready clusters: %w", err)
 	}
 
 	if err = c.Watch(
-		source.Kind(mgr.GetCache(), &expinfrav1.ROSICluster{}),
-		handler.EnqueueRequestsFromMapFunc(r.rosiClusterToROSIControlPlane(log)),
+		source.Kind(mgr.GetCache(), &expinfrav1.ROKSCluster{}),
+		handler.EnqueueRequestsFromMapFunc(r.roksClusterToROKSControlPlane(log)),
 	); err != nil {
-		return fmt.Errorf("failed adding a watch for ROSICluster")
+		return fmt.Errorf("failed adding a watch for ROKSCluster")
 	}
 
 	return nil
@@ -100,13 +100,13 @@ func (r *ROSIControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinedeployments,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinepools,verbs=get;list;watch
 
-// Reconcile will reconcile ROSIControlPlane Resources.
-func (r *ROSIControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
+// Reconcile will reconcile ROKSControlPlane Resources.
+func (r *ROKSControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
 	log := logger.FromContext(ctx)
 
 	// Get the control plane instance
-	rosiControlPlane := &rosicontrolplanev1.ROSIControlPlane{}
-	if err := r.Client.Get(ctx, req.NamespacedName, rosiControlPlane); err != nil {
+	roksControlPlane := &rokscontrolplanev1.ROKSControlPlane{}
+	if err := r.Client.Get(ctx, req.NamespacedName, roksControlPlane); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -114,7 +114,7 @@ func (r *ROSIControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Get the cluster
-	cluster, err := util.GetOwnerCluster(ctx, r.Client, rosiControlPlane.ObjectMeta)
+	cluster, err := util.GetOwnerCluster(ctx, r.Client, roksControlPlane.ObjectMeta)
 	if err != nil {
 		log.Error(err, "Failed to retrieve owner Cluster from the API Server")
 		return ctrl.Result{}, err
@@ -124,16 +124,16 @@ func (r *ROSIControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
-	if capiannotations.IsPaused(cluster, rosiControlPlane) {
+	if capiannotations.IsPaused(cluster, roksControlPlane) {
 		log.Info("Reconciliation is paused for this object")
 		return ctrl.Result{}, nil
 	}
 
-	rosiScope, err := scope.NewROSIControlPlaneScope(scope.ROSIControlPlaneScopeParams{
+	roksScope, err := scope.NewROKSControlPlaneScope(scope.ROKSControlPlaneScopeParams{
 		Client:         r.Client,
 		Cluster:        cluster,
-		ControlPlane:   rosiControlPlane,
-		ControllerName: strings.ToLower(rosiControlPlaneKind),
+		ControlPlane:   roksControlPlane,
+		ControllerName: strings.ToLower(roksControlPlaneKind),
 	})
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create scope: %w", err)
@@ -141,51 +141,51 @@ func (r *ROSIControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Always close the scope
 	defer func() {
-		if err := rosiScope.Close(); err != nil {
+		if err := roksScope.Close(); err != nil {
 			reterr = errors.Join(reterr, err)
 		}
 	}()
 
-	if !rosiControlPlane.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !roksControlPlane.ObjectMeta.DeletionTimestamp.IsZero() {
 		// Handle deletion reconciliation loop.
-		return r.reconcileDelete(ctx, rosiScope)
+		return r.reconcileDelete(ctx, roksScope)
 	}
 
 	// Handle normal reconciliation loop.
-	return r.reconcileNormal(ctx, rosiScope)
+	return r.reconcileNormal(ctx, roksScope)
 }
 
-func (r *ROSIControlPlaneReconciler) reconcileNormal(ctx context.Context, rosiScope *scope.ROSIControlPlaneScope) (res ctrl.Result, reterr error) {
-	rosiScope.Info("Reconciling ROSIControlPlane")
+func (r *ROKSControlPlaneReconciler) reconcileNormal(ctx context.Context, roksScope *scope.ROKSControlPlaneScope) (res ctrl.Result, reterr error) {
+	roksScope.Info("Reconciling ROKSControlPlane")
 
-	// if !rosiScope.Cluster.Status.InfrastructureReady {
-	//	rosiScope.Info("Cluster infrastructure is not ready yet")
+	// if !roksScope.Cluster.Status.InfrastructureReady {
+	//	roksScope.Info("Cluster infrastructure is not ready yet")
 	//	return ctrl.Result{RequeueAfter: r.WaitInfraPeriod}, nil
 	//}
-	if controllerutil.AddFinalizer(rosiScope.ControlPlane, ROSIControlPlaneFinalizer) {
-		if err := rosiScope.PatchObject(); err != nil {
+	if controllerutil.AddFinalizer(roksScope.ControlPlane, ROKSControlPlaneFinalizer) {
+		if err := roksScope.PatchObject(); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	// Create the cluster:
 	clusterBuilder := cmv1.NewCluster().
-		Name(rosiScope.ControlPlane.Name).
+		Name(roksScope.ControlPlane.Name).
 		MultiAZ(true).
 		Product(
 			cmv1.NewProduct().
-				ID("rosi"),
+				ID("roks"),
 		).
 		Region(
 			cmv1.NewCloudRegion().
-				ID(*rosiScope.ControlPlane.Spec.Region),
+				ID(*roksScope.ControlPlane.Spec.Region),
 		).
 		FIPS(false).
 		EtcdEncryption(false).
 		DisableUserWorkloadMonitoring(true).
 		Version(
 			cmv1.NewVersion().
-				ID(*rosiScope.ControlPlane.Spec.Version).
+				ID(*roksScope.ControlPlane.Spec.Version).
 				ChannelGroup("stable"),
 		).
 		ExpirationTimestamp(time.Now().Add(1 * time.Hour)).
@@ -193,12 +193,12 @@ func (r *ROSIControlPlaneReconciler) reconcileNormal(ctx context.Context, rosiSc
 
 	networkBuilder := cmv1.NewNetwork()
 	networkBuilder = networkBuilder.Type("OVNKubernetes")
-	networkBuilder = networkBuilder.MachineCIDR(*rosiScope.ControlPlane.Spec.MachineCIDR)
+	networkBuilder = networkBuilder.MachineCIDR(*roksScope.ControlPlane.Spec.MachineCIDR)
 	clusterBuilder = clusterBuilder.Network(networkBuilder)
 
-	stsBuilder := cmv1.NewSTS().RoleARN(*rosiScope.ControlPlane.Spec.InstallerRoleARN)
+	stsBuilder := cmv1.NewSTS().RoleARN(*roksScope.ControlPlane.Spec.InstallerRoleARN)
 	// stsBuilder = stsBuilder.ExternalID(config.ExternalID)
-	stsBuilder = stsBuilder.SupportRoleARN(*rosiScope.ControlPlane.Spec.SupportRoleARN)
+	stsBuilder = stsBuilder.SupportRoleARN(*roksScope.ControlPlane.Spec.SupportRoleARN)
 	roles := []*cmv1.OperatorIAMRoleBuilder{}
 	for _, role := range []struct {
 		Name      string
@@ -209,42 +209,42 @@ func (r *ROSIControlPlaneReconciler) reconcileNormal(ctx context.Context, rosiSc
 		{
 			Name:      "cloud-credentials",
 			Namespace: "openshift-ingress-operator",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.IngressARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.IngressARN,
 		},
 		{
 			Name:      "installer-cloud-credentials",
 			Namespace: "openshift-image-registry",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.ImageRegistryARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.ImageRegistryARN,
 		},
 		{
 			Name:      "ebs-cloud-credentials",
 			Namespace: "openshift-cluster-csi-drivers",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.StorageARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.StorageARN,
 		},
 		{
 			Name:      "cloud-credentials",
 			Namespace: "openshift-cloud-network-config-controller",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.NetworkARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.NetworkARN,
 		},
 		{
 			Name:      "kube-controller-manager",
 			Namespace: "kube-system",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.KubeCloudControllerARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.KubeCloudControllerARN,
 		},
 		{
 			Name:      "kms-provider",
 			Namespace: "kube-system",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.KMSProviderARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.KMSProviderARN,
 		},
 		{
 			Name:      "control-plane-operator",
 			Namespace: "kube-system",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.ControlPlaneOperatorARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.ControlPlaneOperatorARN,
 		},
 		{
 			Name:      "capa-controller-manager",
 			Namespace: "kube-system",
-			RoleARN:   rosiScope.ControlPlane.Spec.RolesRef.NodePoolManagementARN,
+			RoleARN:   roksScope.ControlPlane.Spec.RolesRef.NodePoolManagementARN,
 		},
 	} {
 		roles = append(roles, cmv1.NewOperatorIAMRole().
@@ -258,22 +258,22 @@ func (r *ROSIControlPlaneReconciler) reconcileNormal(ctx context.Context, rosiSc
 	instanceIAMRolesBuilder.MasterRoleARN("TODO")
 	instanceIAMRolesBuilder.WorkerRoleARN("TODO")
 	stsBuilder = stsBuilder.InstanceIAMRoles(instanceIAMRolesBuilder)
-	stsBuilder.OidcConfig(cmv1.NewOidcConfig().ID(*rosiScope.ControlPlane.Spec.OIDCID))
+	stsBuilder.OidcConfig(cmv1.NewOidcConfig().ID(*roksScope.ControlPlane.Spec.OIDCID))
 
 	stsBuilder.AutoMode(true)
 
 	ibmcloudBuilder := cmv1.NewIBMCLOUD().
-		AccountID(*rosiScope.ControlPlane.Spec.AccountID)
-	ibmcloudBuilder = ibmcloudBuilder.SubnetIDs(rosiScope.ControlPlane.Spec.Subnets...)
+		AccountID(*roksScope.ControlPlane.Spec.AccountID)
+	ibmcloudBuilder = ibmcloudBuilder.SubnetIDs(roksScope.ControlPlane.Spec.Subnets...)
 	ibmcloudBuilder = ibmcloudBuilder.STS(stsBuilder)
 	clusterBuilder = clusterBuilder.IBMCLOUD(ibmcloudBuilder)
 
 	clusterNodesBuilder := cmv1.NewClusterNodes()
-	clusterNodesBuilder = clusterNodesBuilder.AvailabilityZones(rosiScope.ControlPlane.Spec.AvailabilityZones...)
+	clusterNodesBuilder = clusterNodesBuilder.AvailabilityZones(roksScope.ControlPlane.Spec.AvailabilityZones...)
 	clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 
 	clusterProperties := map[string]string{}
-	clusterProperties[rosiCreatorArnProperty] = *rosiScope.ControlPlane.Spec.CreatorARN
+	clusterProperties[roksCreatorArnProperty] = *roksScope.ControlPlane.Spec.CreatorARN
 
 	clusterBuilder = clusterBuilder.Properties(clusterProperties)
 	clusterSpec, err := clusterBuilder.Build()
@@ -322,10 +322,10 @@ func (r *ROSIControlPlaneReconciler) reconcileNormal(ctx context.Context, rosiSc
 	return ctrl.Result{}, nil
 }
 
-func (r *ROSIControlPlaneReconciler) reconcileDelete(_ context.Context, rosiScope *scope.ROSIControlPlaneScope) (res ctrl.Result, reterr error) {
+func (r *ROKSControlPlaneReconciler) reconcileDelete(_ context.Context, roksScope *scope.ROKSControlPlaneScope) (res ctrl.Result, reterr error) {
 	// log := logger.FromContext(ctx)
 
-	rosiScope.Info("Reconciling ROSIControlPlane delete")
+	roksScope.Info("Reconciling ROKSControlPlane delete")
 
 	// Create a logger that has the debug level enabled:
 	ocmLogger, err := sdk.NewGoLoggerBuilder().
@@ -352,7 +352,7 @@ func (r *ROSIControlPlaneReconciler) reconcileDelete(_ context.Context, rosiScop
 		}
 	}()
 
-	cluster, err := r.getOcmCluster(rosiScope, connection)
+	cluster, err := r.getOcmCluster(roksScope, connection)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -369,40 +369,40 @@ func (r *ROSIControlPlaneReconciler) reconcileDelete(_ context.Context, rosiScop
 		return ctrl.Result{}, fmt.Errorf(msg)
 	}
 
-	controllerutil.RemoveFinalizer(rosiScope.ControlPlane, ROSIControlPlaneFinalizer)
-	if err := rosiScope.PatchObject(); err != nil {
+	controllerutil.RemoveFinalizer(roksScope.ControlPlane, ROKSControlPlaneFinalizer)
+	if err := roksScope.PatchObject(); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ROSIControlPlaneReconciler) rosiClusterToROSIControlPlane(log *logger.Logger) handler.MapFunc {
+func (r *ROKSControlPlaneReconciler) roksClusterToROKSControlPlane(log *logger.Logger) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []ctrl.Request {
-		rosiCluster, ok := o.(*expinfrav1.ROSICluster)
+		roksCluster, ok := o.(*expinfrav1.ROKSCluster)
 		if !ok {
-			log.Error(fmt.Errorf("expected a ROSICluster but got a %T", o), "Expected ROSICluster")
+			log.Error(fmt.Errorf("expected a ROKSCluster but got a %T", o), "Expected ROKSCluster")
 			return nil
 		}
 
-		if !rosiCluster.ObjectMeta.DeletionTimestamp.IsZero() {
-			log.Debug("ROSICluster has a deletion timestamp, skipping mapping")
+		if !roksCluster.ObjectMeta.DeletionTimestamp.IsZero() {
+			log.Debug("ROKSCluster has a deletion timestamp, skipping mapping")
 			return nil
 		}
 
-		cluster, err := util.GetOwnerCluster(ctx, r.Client, rosiCluster.ObjectMeta)
+		cluster, err := util.GetOwnerCluster(ctx, r.Client, roksCluster.ObjectMeta)
 		if err != nil {
 			log.Error(err, "failed to get owning cluster")
 			return nil
 		}
 		if cluster == nil {
-			log.Debug("Owning cluster not set on ROSICluster, skipping mapping")
+			log.Debug("Owning cluster not set on ROKSCluster, skipping mapping")
 			return nil
 		}
 
 		controlPlaneRef := cluster.Spec.ControlPlaneRef
-		if controlPlaneRef == nil || controlPlaneRef.Kind != rosiControlPlaneKind {
-			log.Debug("ControlPlaneRef is nil or not ROSIControlPlane, skipping mapping")
+		if controlPlaneRef == nil || controlPlaneRef.Kind != roksControlPlaneKind {
+			log.Debug("ControlPlaneRef is nil or not ROKSControlPlane, skipping mapping")
 			return nil
 		}
 
@@ -417,10 +417,10 @@ func (r *ROSIControlPlaneReconciler) rosiClusterToROSIControlPlane(log *logger.L
 	}
 }
 
-func (r *ROSIControlPlaneReconciler) getOcmCluster(rosiScope *scope.ROSIControlPlaneScope, ocmConnection *sdk.Connection) (*cmv1.Cluster, error) {
-	clusterKey := rosiScope.ControlPlane.Name
+func (r *ROKSControlPlaneReconciler) getOcmCluster(roksScope *scope.ROKSControlPlaneScope, ocmConnection *sdk.Connection) (*cmv1.Cluster, error) {
+	clusterKey := roksScope.ControlPlane.Name
 	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s' OR external_id = '%s')",
-		getClusterFilter(rosiScope),
+		getClusterFilter(roksScope),
 		clusterKey, clusterKey, clusterKey,
 	)
 	response, err := ocmConnection.ClustersMgmt().V1().Clusters().List().
@@ -443,13 +443,13 @@ func (r *ROSIControlPlaneReconciler) getOcmCluster(rosiScope *scope.ROSIControlP
 }
 
 // Generate a query that filters clusters running on the current IBMCLOUD session account.
-func getClusterFilter(rosiScope *scope.ROSIControlPlaneScope) string {
-	filter := "product.id = 'rosi'"
-	if rosiScope.ControlPlane.Spec.CreatorARN != nil {
+func getClusterFilter(roksScope *scope.ROKSControlPlaneScope) string {
+	filter := "product.id = 'roks'"
+	if roksScope.ControlPlane.Spec.CreatorARN != nil {
 		filter = fmt.Sprintf("%s AND (properties.%s = '%s')",
 			filter,
-			rosiCreatorArnProperty,
-			*rosiScope.ControlPlane.Spec.CreatorARN)
+			roksCreatorArnProperty,
+			*roksScope.ControlPlane.Spec.CreatorARN)
 	}
 	return filter
 }

@@ -22,15 +22,15 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-type ROSIClusterSpec struct {
+type ROKSClusterSpec struct {
 	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 }
 
-// ROSIClusterStatus defines the observed state of ROSICluster
-type ROSIClusterStatus struct {
-	// Ready is when the ROSIControlPlane has a API server URL.
+// ROKSClusterStatus defines the observed state of ROKSCluster
+type ROKSClusterStatus struct {
+	// Ready is when the ROKSControlPlane has a API server URL.
 	// +optional
 	Ready bool `json:"ready,omitempty"`
 
@@ -40,30 +40,30 @@ type ROSIClusterStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=rosiclusters,scope=Namespaced,categories=cluster-api,shortName=rosic
+// +kubebuilder:resource:path=roksclusters,scope=Namespaced,categories=cluster-api,shortName=roksc
 // +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels.cluster\\.x-k8s\\.io/cluster-name",description="Cluster to which this IBMCLOUDManagedControl belongs"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Control plane infrastructure is ready for worker nodes"
 // +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".spec.controlPlaneEndpoint.host",description="API Endpoint",priority=1
 
-type ROSICluster struct {
+type ROKSCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ROSIClusterSpec   `json:"spec,omitempty"`
-	Status ROSIClusterStatus `json:"status,omitempty"`
+	Spec   ROKSClusterSpec   `json:"spec,omitempty"`
+	Status ROKSClusterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// ROSIClusterList contains a list of ROSICluster.
-type ROSIClusterList struct {
+// ROKSClusterList contains a list of ROKSCluster.
+type ROKSClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ROSICluster `json:"items"`
+	Items           []ROKSCluster `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ROSICluster{}, &ROSIClusterList{})
+	SchemeBuilder.Register(&ROKSCluster{}, &ROKSClusterList{})
 }

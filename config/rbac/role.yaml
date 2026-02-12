@@ -71,8 +71,8 @@ rules:
 - apiGroups:
   - controlplane.cluster.x-k8s.io
   resources:
-  - rosicontrolplanes
-  - rosicontrolplanes/status
+  - rokscontrolplanes
+  - rokscontrolplanes/status
   verbs:
   - get
   - list
@@ -129,7 +129,7 @@ rules:
 - apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
-  - rosiclusters
+  - roksclusters
   verbs:
   - delete
   - get
@@ -140,7 +140,7 @@ rules:
 - apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
-  - rosiclusters/status
+  - roksclusters/status
   verbs:
   - get
   - patch

@@ -4,18 +4,18 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.1
-  name: rosiclusters.infrastructure.cluster.x-k8s.io
+  name: roksclusters.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
   names:
     categories:
     - cluster-api
-    kind: ROSICluster
-    listKind: ROSIClusterList
-    plural: rosiclusters
+    kind: ROKSCluster
+    listKind: ROKSClusterList
+    plural: roksclusters
     shortNames:
-    - rosic
-    singular: rosicluster
+    - roksc
+    singular: rokscluster
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -67,7 +67,7 @@ spec:
                 type: object
             type: object
           status:
-            description: ROSIClusterStatus defines the observed state of ROSICluster
+            description: ROKSClusterStatus defines the observed state of ROKSCluster
             properties:
               failureDomains:
                 additionalProperties:
@@ -90,7 +90,7 @@ spec:
                   zones that can be used
                 type: object
               ready:
-                description: Ready is when the ROSIControlPlane has a API server URL.
+                description: Ready is when the ROKSControlPlane has a API server URL.
                 type: boolean
             type: object
         type: object
