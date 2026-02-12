@@ -69,6 +69,15 @@ rules:
   - list
   - watch
 - apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - rosicontrolplanes
+  - rosicontrolplanes/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
   - ibmpowervsclusters
@@ -117,3 +126,22 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - rosiclusters
+  verbs:
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - rosiclusters/status
+  verbs:
+  - get
+  - patch
+  - update

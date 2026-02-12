@@ -35,6 +35,8 @@ import (
 	cgrecord "k8s.io/client-go/tools/record"
 	"k8s.io/component-base/logs"
 	logsv1 "k8s.io/component-base/logs/api/v1"
+	"k8s.io/utils/pointer"
+
 	"k8s.io/klog/v2"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,19 +49,20 @@ import (
 	"sigs.k8s.io/cluster-api/controllers/crdmigrator"
 	"sigs.k8s.io/cluster-api/util/flags"
 
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/component-base/logs/json/register"
 	powervsinfrav1beta2 "sigs.k8s.io/cluster-api-provider-ibmcloud/api/powervs/v1beta2"
 	powervsinfrav1 "sigs.k8s.io/cluster-api-provider-ibmcloud/api/powervs/v1beta3"
 	vpcinfrav1beta1 "sigs.k8s.io/cluster-api-provider-ibmcloud/api/vpc/v1beta1"
 	vpcinfrav1 "sigs.k8s.io/cluster-api-provider-ibmcloud/api/vpc/v1beta2"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/controllers"
+	rosicontrolplanev1 "sigs.k8s.io/cluster-api-provider-ibmcloud/controlplane/rosi/api/v1beta2"
+	rosicontrolplanecontrollers "sigs.k8s.io/cluster-api-provider-ibmcloud/controlplane/rosi/controllers"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/internal/webhooks/powervs"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/internal/webhooks/vpc"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/pkg/endpoints"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/pkg/options"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/pkg/record"
-
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	_ "k8s.io/component-base/logs/json/register"
 )
 
 var (
@@ -90,6 +93,7 @@ func init() {
 	utilruntime.Must(vpcinfrav1.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
+	utilruntime.Must(rosicontrolplanev1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -386,6 +390,24 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager, serviceEndpoint []e
 		Scheme:          mgr.GetScheme(),
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IBMPowerVSImage")
+		os.Exit(1)
+	}
+
+	if err := (&rosicontrolplanecontrollers.ROSIControlPlaneReconciler{
+		Client:           mgr.GetClient(),
+		WatchFilterValue: watchFilterValue,
+		WaitInfraPeriod:  30,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: 2, RecoverPanic: pointer.Bool(true)}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ROSIControlPlane")
+		os.Exit(1)
+	}
+
+	if err := (&controllers.ROSIClusterReconciler{
+		Client:           mgr.GetClient(),
+		Recorder:         mgr.GetEventRecorderFor("rosicluster-controller"),
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: 2, RecoverPanic: pointer.Bool(true)}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ROSICluster")
 		os.Exit(1)
 	}
 }
