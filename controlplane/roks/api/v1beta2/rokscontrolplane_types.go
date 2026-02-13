@@ -43,30 +43,6 @@ type RoksControlPlaneSpec struct { //nolint: maligned
 	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
-
-	// IBM IAM roles used to perform credential requests by the openshift operators.
-	RolesRef IBMRolesRef `json:"rolesRef"`
-
-	// The ID of the OpenID Connect Provider.
-	OIDCID *string `json:"oidcID"`
-
-	// TODO: these are to satisfy ocm sdk. Explore how to drop them.
-	AccountID        *string `json:"accountID"`
-	CreatorARN       *string `json:"creatorARN"`
-	InstallerRoleARN *string `json:"installerRoleARN"`
-	SupportRoleARN   *string `json:"supportRoleARN"`
-}
-
-// IBMRolesRef contains references to various IBM IAM roles required for operators to make calls against the IBM API.
-type IBMRolesRef struct {
-	IngressARN              string `json:"ingressARN"`
-	ImageRegistryARN        string `json:"imageRegistryARN"`
-	StorageARN              string `json:"storageARN"`
-	NetworkARN              string `json:"networkARN"`
-	KubeCloudControllerARN  string `json:"kubeCloudControllerARN"`
-	NodePoolManagementARN   string `json:"nodePoolManagementARN"`
-	ControlPlaneOperatorARN string `json:"controlPlaneOperatorARN"`
-	KMSProviderARN          string `json:"kmsProviderARN"`
 }
 
 type RoksControlPlaneStatus struct {
